@@ -1,3 +1,4 @@
+import { Inspector } from 'react-dev-inspector';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
@@ -8,7 +9,10 @@ const root = ReactDOM.createRoot(
 );
 root.render(
   // <React.StrictMode>
+  <>
+    <Inspector />
   <App />
+  </>
   // </React.StrictMode>
 );
 
