@@ -1,26 +1,20 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+import { Route, Switch } from "wouter";
+import Main from "./Main";
+import LoginPage from "./login/page";
+import SignupPage from "./signup/page";
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
-}
+
+const App = () => (
+    <GoogleOAuthProvider clientId="304531247476-58f940f3b0dgrupg95cdo8b51fspupdv.apps.googleusercontent.com">
+        <Switch>
+            <Route path="/" component={Main} />
+            <Route path="/login" component={LoginPage} />
+            <Route path="/signup" component={SignupPage} />
+            {/* Default route in a switch */}
+            <Route>404: No such page!</Route>
+        </Switch>
+    </GoogleOAuthProvider>
+);
 
 export default App;
