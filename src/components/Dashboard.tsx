@@ -1,15 +1,202 @@
-import { useState } from "react";
+import {
+	transitionsByName,
+	transitionsOrderByCreatedAt,
+} from "@/lib/transitions";
+import type { TransitionObject } from "gl-transition-utils/lib/transformSource";
+import { useEffect, useMemo, useState } from "react";
+import AnimatedVignette from "./AnimatedVignette";
 import AudioUploader from "./AudioUploader";
 import HistoryDialog from "./HistoryDialog";
 import MergeResult from "./MergeResult";
-import TransitionSelector from "./TransitionSelector";
+import { TrackVisibility } from "./TrackVisibility";
 import UpgradeDialog from "./UpgradeDialog";
 import VideoUploader from "./VideoUploader";
+import Vignette from "./Vignette";
+
+const galleryFromImage = "/images/600x400/barley.jpg";
+const galleryToImage = "/images/600x400/hBd6EPoQT2C8VQYv65ys_White_Sands.jpg";
+const galleryPageSize = 6;
 
 interface DashboardProps {
 	userEmail: string;
 	planMaxVideos: number;
 	onLogout: () => void;
+}
+
+interface TransitionGalleryProps {
+	selectedTransition: string;
+	onSelect: (transitionName: string) => void;
+}
+
+function TransitionGallery({
+	selectedTransition,
+	onSelect,
+}: TransitionGalleryProps) {
+	const [page, setPage] = useState(0);
+
+	useEffect(() => {
+		if (!selectedTransition) {
+			return;
+		}
+
+		const index = transitionsOrderByCreatedAt.findIndex(
+			(transition) => transition.name === selectedTransition,
+		);
+
+		if (index === -1) {
+			return;
+		}
+
+		const nextPage = Math.floor(index / galleryPageSize);
+		setPage((current) => (current === nextPage ? current : nextPage));
+	}, [selectedTransition]);
+
+	const totalPages = Math.max(
+		1,
+		Math.ceil(transitionsOrderByCreatedAt.length / galleryPageSize),
+	);
+	const pageStart = page * galleryPageSize;
+	const pageTransitions = transitionsOrderByCreatedAt.slice(
+		pageStart,
+		pageStart + galleryPageSize,
+	);
+
+	const handlePrev = () => {
+		setPage((current) => Math.max(0, current - 1));
+	};
+
+	const handleNext = () => {
+		setPage((current) => Math.min(totalPages - 1, current + 1));
+	};
+
+	return (
+		<div>
+			<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+				{pageTransitions.map((transition) => {
+					const isSelected = transition.name === selectedTransition;
+
+					return (
+						<button
+							key={transition.name}
+							type="button"
+							onClick={() => onSelect(transition.name)}
+							aria-label={`Select ${transition.name} transition`}
+							aria-pressed={isSelected}
+							className={`group relative overflow-hidden rounded-xl border-2 px-2 pb-3 pt-2 transition-all focus:outline-none focus:ring-2 focus:ring-purple-400 ${
+								isSelected
+									? "border-purple-500 shadow-xl shadow-purple-200/60"
+									: "border-transparent shadow-md hover:border-purple-300 hover:shadow-lg"
+							}`}
+						>
+							<div className="flex justify-center">
+								<Vignette
+									interaction
+									transition={transition}
+									from={galleryFromImage}
+									to={galleryToImage}
+									width={300}
+									height={200}
+									preload={[galleryFromImage, galleryToImage]}
+								/>
+							</div>
+							<p className="mt-2 text-center text-sm font-medium text-gray-700">
+								{transition.name}
+							</p>
+						</button>
+					);
+				})}
+			</div>
+			<div className="mt-4 flex items-center justify-between gap-4">
+				<button
+					type="button"
+					onClick={handlePrev}
+					disabled={page === 0}
+					className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					Previous
+				</button>
+				<span className="text-sm text-gray-600">
+					Page {page + 1} of {totalPages}
+				</span>
+				<button
+					type="button"
+					onClick={handleNext}
+					disabled={page >= totalPages - 1}
+					className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					Next
+				</button>
+			</div>
+		</div>
+	);
+}
+
+interface TransitionPreviewProps {
+	transition?: TransitionObject;
+	videoSources: { url: string; name: string }[];
+}
+
+function TransitionPreview({
+	transition,
+	videoSources,
+}: TransitionPreviewProps) {
+	const previewVideos = useMemo(
+		() =>
+			videoSources.map(({ url, name }, index) => (
+				<video
+					key={url + name}
+					src={url}
+					className="h-full w-full object-cover"
+					autoPlay
+					loop
+					// muted
+					playsInline
+					aria-label={`${name} preview`}
+				>
+					<track kind="captions" />
+				</video>
+			)),
+		[videoSources],
+	);
+	if (!transition || videoSources.length < 2) {
+		return null;
+	}
+	const labelNames = videoSources.map((source) => source.name);
+	const sequenceLabel =
+		labelNames.length <= 3
+			? labelNames.join(" -> ")
+			: `${labelNames.slice(0, 3).join(" -> ")} -> ...`;
+	const width = 300;
+	const visibleHeight = Math.round((width * 544) / 1280);
+	return (
+		<TrackVisibility>
+			{(visible) => (
+				<div className="mb-6">
+					<h3 className="mb-3 text-lg font-semibold text-gray-800">
+						Live Transition Preview
+					</h3>
+
+					<div className="flex justify-center">
+						<AnimatedVignette
+							interaction={false}
+							paused={!visible}
+							transitions={[transition]}
+							images={visible ? previewVideos : [null]}
+							width={width}
+							height={visibleHeight}
+							duration={3000}
+							delay={500}
+							keepRenderingDuringDelay
+						/>
+					</div>
+
+					<p className="mt-2 text-center text-sm text-gray-600">
+						{sequenceLabel}
+					</p>
+				</div>
+			)}
+		</TrackVisibility>
+	);
 }
 
 export default function Dashboard({
@@ -27,6 +214,21 @@ export default function Dashboard({
 		"idle" | "processing" | "success" | "failed"
 	>("idle");
 	const [resultVideoUrl, setResultVideoUrl] = useState<string>("");
+
+	const previewSources = useMemo(
+		() =>
+			selectedVideos.map((file) => ({
+				url: URL.createObjectURL(file),
+				name: file.name,
+			})),
+		[selectedVideos],
+	);
+
+	useEffect(() => {
+		return () => {
+			previewSources.forEach(({ url }) => URL.revokeObjectURL(url));
+		};
+	}, [previewSources]);
 
 	const handleMerge = async () => {
 		if (!selectedTransition || selectedVideos.length === 0) {
@@ -88,7 +290,7 @@ export default function Dashboard({
 						setMergeStatus("failed");
 						setIsProcessing(false);
 					} else {
-						setTimeout(poll, 2000); // Poll every 2 seconds
+						setTimeout(poll, 2000);
 					}
 				}
 			} catch (error) {
@@ -127,10 +329,11 @@ export default function Dashboard({
 		setSelectedAudio(null);
 	};
 
+	const previewTransition = transitionsByName[selectedTransition];
+
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
-			{/* Header */}
-			<header className="flex justify-between items-center p-6 bg-white shadow-sm">
+			<header className="flex items-center justify-between bg-white p-6 shadow-sm">
 				<h1 className="text-2xl font-bold text-gray-800">
 					Video Merger Dashboard
 				</h1>
@@ -139,46 +342,41 @@ export default function Dashboard({
 					<button
 						type="button"
 						onClick={() => setShowHistoryDialog(true)}
-						className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+						className="px-4 py-2 text-gray-700 transition-colors hover:text-gray-900"
 					>
 						History
 					</button>
 					<button
 						type="button"
 						onClick={() => setShowUpgradeDialog(true)}
-						className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
+						className="rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-white transition-all hover:from-purple-700 hover:to-blue-700"
 					>
 						Upgrade
 					</button>
 					<button
 						type="button"
 						onClick={onLogout}
-						className="px-4 py-2 text-gray-700 hover:text-red-600 transition-colors"
+						className="px-4 py-2 text-gray-700 transition-colors hover:text-red-600"
 					>
 						Logout
 					</button>
 				</div>
 			</header>
 
-			{/* Main Content */}
 			<div className="p-8">
-				<div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
-					{/* Left Panels */}
-					<div className="lg:col-span-3 space-y-6">
-						{/* Transition Selection */}
-						<div className="bg-white rounded-xl shadow-lg p-6">
-							<h2 className="text-xl font-semibold mb-4 text-gray-800">
+				<div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:grid-cols-4">
+					<div className="space-y-6 lg:col-span-3">
+						<div className="rounded-xl bg-white p-6 shadow-lg">
+							<h2 className="mb-4 text-xl font-semibold text-gray-800">
 								Select Transition
 							</h2>
-							<TransitionSelector
+							<TransitionGallery
 								selectedTransition={selectedTransition}
 								onSelect={setSelectedTransition}
 							/>
 						</div>
-
-						{/* Video Upload */}
-						<div className="bg-white rounded-xl shadow-lg p-6">
-							<h2 className="text-xl font-semibold mb-4 text-gray-800">
+						<div className="rounded-xl bg-white p-6 shadow-lg">
+							<h2 className="mb-4 text-xl font-semibold text-gray-800">
 								Upload Videos (Max: {planMaxVideos})
 							</h2>
 							<VideoUploader
@@ -188,9 +386,8 @@ export default function Dashboard({
 							/>
 						</div>
 
-						{/* Audio Upload */}
-						<div className="bg-white rounded-xl shadow-lg p-6">
-							<h2 className="text-xl font-semibold mb-4 text-gray-800">
+						<div className="rounded-xl bg-white p-6 shadow-lg">
+							<h2 className="mb-4 text-xl font-semibold text-gray-800">
 								Background Audio (Optional)
 							</h2>
 							<AudioUploader
@@ -199,7 +396,6 @@ export default function Dashboard({
 							/>
 						</div>
 
-						{/* Merge Button */}
 						<button
 							type="submit"
 							onClick={handleMerge}
@@ -208,18 +404,21 @@ export default function Dashboard({
 								!selectedTransition ||
 								selectedVideos.length === 0
 							}
-							className="w-full py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-lg font-semibold rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+							className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:from-purple-700 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							{isProcessing ? "Processing..." : "Merge Videos"}
 						</button>
 					</div>
 
-					{/* Right Panel - Result */}
 					<div className="lg:col-span-1">
-						<div className="bg-white rounded-xl shadow-lg p-6 sticky top-8">
-							<h2 className="text-xl font-semibold mb-4 text-gray-800">
+						<div className="sticky top-8 rounded-xl bg-white p-6 shadow-lg">
+							<h2 className="mb-4 text-xl font-semibold text-gray-800">
 								Result
 							</h2>
+							<TransitionPreview
+								transition={previewTransition}
+								videoSources={previewSources}
+							/>
 							<MergeResult
 								status={mergeStatus}
 								videoUrl={resultVideoUrl}
@@ -229,7 +428,7 @@ export default function Dashboard({
 					</div>
 				</div>
 			</div>
-			{/* Dialogs */}
+
 			{showUpgradeDialog && (
 				<UpgradeDialog onClose={() => setShowUpgradeDialog(false)} />
 			)}
