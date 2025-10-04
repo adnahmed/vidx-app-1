@@ -122,101 +122,115 @@ export default function Dashboard({ userEmail, planMaxVideos, onLogout }: Dashbo
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
-            {/* Header */}
-            <header className="flex justify-between items-center p-6 bg-white shadow-sm">
-                <h1 className="text-2xl font-bold text-gray-800">Video Merger Dashboard</h1>
-                <div className="flex items-center gap-4">
-                    <span className="text-gray-600">Welcome, {userEmail}</span>
-                    <button
-                        onClick={() => setShowHistoryDialog(true)}
-                        className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
-                    >
-                        History
-                    </button>
-                    <button
-                        onClick={() => setShowUpgradeDialog(true)}
-                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
-                    >
-                        Upgrade
-                    </button>
-                    <button
-                        onClick={onLogout}
-                        className="px-4 py-2 text-gray-700 hover:text-red-600 transition-colors"
-                    >
-                        Logout
-                    </button>
-                </div>
-            </header>
+					<div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+						{/* Header */}
+						<header className="flex justify-between items-center p-6 bg-white shadow-sm">
+							<h1 className="text-2xl font-bold text-gray-800">
+								Video Merger Dashboard
+							</h1>
+							<div className="flex items-center gap-4">
+								<span className="text-gray-600">Welcome, {userEmail}</span>
+								<button
+									type="button"
+									onClick={() => setShowHistoryDialog(true)}
+									className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+								>
+									History
+								</button>
+								<button
+									type="button"
+									onClick={() => setShowUpgradeDialog(true)}
+									className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all"
+								>
+									Upgrade
+								</button>
+								<button
+									type="button"
+									onClick={onLogout}
+									className="px-4 py-2 text-gray-700 hover:text-red-600 transition-colors"
+								>
+									Logout
+								</button>
+							</div>
+						</header>
 
-            {/* Main Content */}
-            <div className="p-8">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* Left Panels */}
-                    <div className="lg:col-span-3 space-y-6">
-                        {/* Transition Selection */}
-                        <div className="bg-white rounded-xl shadow-lg p-6">
-                            <h2 className="text-xl font-semibold mb-4 text-gray-800">Select Transition</h2>
-                            <TransitionSelector
-                                selectedTransition={selectedTransition}
-                                onSelect={setSelectedTransition}
-                            />
-                        </div>
+						{/* Main Content */}
+						<div className="p-8">
+							<div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
+								{/* Left Panels */}
+								<div className="lg:col-span-3 space-y-6">
+									{/* Transition Selection */}
+									<div className="bg-white rounded-xl shadow-lg p-6">
+										<h2 className="text-xl font-semibold mb-4 text-gray-800">
+											Select Transition
+										</h2>
+										<TransitionSelector
+											selectedTransition={selectedTransition}
+											onSelect={setSelectedTransition}
+										/>
+									</div>
 
-                        {/* Video Upload */}
-                        <div className="bg-white rounded-xl shadow-lg p-6">
-                            <h2 className="text-xl font-semibold mb-4 text-gray-800">
-                                Upload Videos (Max: {planMaxVideos})
-                            </h2>
-                            <VideoUploader
-                                selectedVideos={selectedVideos}
-                                onVideosChange={setSelectedVideos}
-                                maxVideos={planMaxVideos}
-                            />
-                        </div>
+									{/* Video Upload */}
+									<div className="bg-white rounded-xl shadow-lg p-6">
+										<h2 className="text-xl font-semibold mb-4 text-gray-800">
+											Upload Videos (Max: {planMaxVideos})
+										</h2>
+										<VideoUploader
+											selectedVideos={selectedVideos}
+											onVideosChange={setSelectedVideos}
+											maxVideos={planMaxVideos}
+										/>
+									</div>
 
-                        {/* Audio Upload */}
-                        <div className="bg-white rounded-xl shadow-lg p-6">
-                            <h2 className="text-xl font-semibold mb-4 text-gray-800">
-                                Background Audio (Optional)
-                            </h2>
-                            <AudioUploader
-                                selectedAudio={selectedAudio}
-                                onAudioChange={setSelectedAudio}
-                            />
-                        </div>
+									{/* Audio Upload */}
+									<div className="bg-white rounded-xl shadow-lg p-6">
+										<h2 className="text-xl font-semibold mb-4 text-gray-800">
+											Background Audio (Optional)
+										</h2>
+										<AudioUploader
+											selectedAudio={selectedAudio}
+											onAudioChange={setSelectedAudio}
+										/>
+									</div>
 
-                        {/* Merge Button */}
-                        <button
-                            onClick={handleMerge}
-                            disabled={isProcessing || !selectedTransition || selectedVideos.length === 0}
-                            className="w-full py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-lg font-semibold rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                        >
-                            {isProcessing ? 'Processing...' : 'Merge Videos'}
-                        </button>
-                    </div>
+									{/* Merge Button */}
+									<button
+										type="submit"
+										onClick={handleMerge}
+										disabled={
+											isProcessing ||
+											!selectedTransition ||
+											selectedVideos.length === 0
+										}
+										className="w-full py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-lg font-semibold rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+									>
+										{isProcessing ? "Processing..." : "Merge Videos"}
+									</button>
+								</div>
 
-                    {/* Right Panel - Result */}
-                    <div className="lg:col-span-1">
-                        <div className="bg-white rounded-xl shadow-lg p-6 sticky top-8">
-                            <h2 className="text-xl font-semibold mb-4 text-gray-800">Result</h2>
-                            <MergeResult
-                                status={mergeStatus}
-                                videoUrl={resultVideoUrl}
-                                onReset={resetMerge}
-                            />
-                        </div>
-                    </div>
-                </div>
-            </div>
+								{/* Right Panel - Result */}
+								<div className="lg:col-span-1">
+									<div className="bg-white rounded-xl shadow-lg p-6 sticky top-8">
+										<h2 className="text-xl font-semibold mb-4 text-gray-800">
+											Result
+										</h2>
+										<MergeResult
+											status={mergeStatus}
+											videoUrl={resultVideoUrl}
+											onReset={resetMerge}
+										/>
+									</div>
+								</div>
+							</div>
+						</div>
 
-            {/* Dialogs */}
-            {showUpgradeDialog && (
-                <UpgradeDialog onClose={() => setShowUpgradeDialog(false)} />
-            )}
-            {showHistoryDialog && (
-                <HistoryDialog onClose={() => setShowHistoryDialog(false)} />
-            )}
-        </div>
-    );
+						{/* Dialogs */}
+						{showUpgradeDialog && (
+							<UpgradeDialog onClose={() => setShowUpgradeDialog(false)} />
+						)}
+						{showHistoryDialog && (
+							<HistoryDialog onClose={() => setShowHistoryDialog(false)} />
+						)}
+					</div>
+				);
 }
