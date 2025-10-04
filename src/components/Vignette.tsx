@@ -6,6 +6,7 @@ import {
 	forwardRef,
 	type MouseEvent,
 	type ReactNode,
+	useCallback,
 	useEffect,
 	useImperativeHandle,
 	useRef,
@@ -99,17 +100,20 @@ const Vignette = forwardRef<VignetteHandle, VignetteProps>(
 		const cachedProgress = useRef(defaultProgress);
 		const setProgressRef = useRef<((progress: number) => void) | null>(null);
 
-		const getProgress = () => cachedProgress.current;
+		const getProgress = useCallback(() => cachedProgress.current, []);
 
-		const setProgress = (value: number, forceRendering = false) => {
-			if (cachedProgress.current === value && !forceRendering) return;
-			cachedProgress.current = value;
-			if (setProgressRef.current && !failing) {
-				const finalProgress = easing ? easing(value) : value;
-				setProgressRef.current(finalProgress);
-				onDrawWithProgress?.(value);
-			}
-		};
+		const setProgress = useCallback(
+			(value: number, forceRendering = false) => {
+				if (cachedProgress.current === value && !forceRendering) return;
+				cachedProgress.current = value;
+				if (setProgressRef.current && !failing) {
+					const finalProgress = easing ? easing(value) : value;
+					setProgressRef.current(finalProgress);
+					onDrawWithProgress?.(value);
+				}
+			},
+			[easing, failing, onDrawWithProgress],
+		);
 
 		useImperativeHandle(
 			ref,
@@ -129,7 +133,7 @@ const Vignette = forwardRef<VignetteHandle, VignetteProps>(
 
 		useEffect(() => {
 			onDrawWithProgress?.(getProgress());
-		}, [onDrawWithProgress]);
+		}, [onDrawWithProgress, getProgress]);
 
 		useEffect(() => {
 			if (hover && onHoverOut) {
@@ -137,7 +141,7 @@ const Vignette = forwardRef<VignetteHandle, VignetteProps>(
 				onHoverOut();
 			}
 			// eslint-disable-next-line react-hooks/exhaustive-deps
-		}, [interaction]);
+		}, [hover, onHoverOut]);
 
 		const handleMouseEnter = (e: MouseEvent) => {
 			setHoverValue(hoverValueFromEvent(e));
