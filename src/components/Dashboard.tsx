@@ -3,7 +3,7 @@ import {
 	transitionsOrderByCreatedAt,
 } from "@/lib/transitions";
 import type { TransitionObject } from "gl-transition-utils/lib/transformSource";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AnimatedVignette from "./AnimatedVignette";
 import AudioUploader from "./AudioUploader";
 import HistoryDialog from "./HistoryDialog";
@@ -16,6 +16,22 @@ import Vignette from "./Vignette";
 const galleryFromImage = "/images/600x400/barley.jpg";
 const galleryToImage = "/images/600x400/hBd6EPoQT2C8VQYv65ys_White_Sands.jpg";
 const galleryPageSize = 6;
+
+const API_BASE_URL =
+	process.env.NODE_ENV === "development"
+		? "http://localhost:8000"
+		: "http://212.85.25.109:8000";
+
+type VideoStatus = "PENDING" | "STARTED" | "SUCCESS" | "FAILURE";
+type MergeState = "IDLE" | VideoStatus;
+
+function normaliseVideoStatus(value: unknown): VideoStatus {
+	const upper = typeof value === "string" ? value.toUpperCase() : "";
+	if (upper === "PENDING" || upper === "STARTED" || upper === "SUCCESS" || upper === "FAILURE") {
+		return upper as VideoStatus;
+	}
+	return "PENDING";
+}
 
 interface DashboardProps {
 	userEmail: string;
@@ -210,10 +226,17 @@ export default function Dashboard({
 	const [isProcessing, setIsProcessing] = useState(false);
 	const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 	const [showHistoryDialog, setShowHistoryDialog] = useState(false);
-	const [mergeStatus, setMergeStatus] = useState<
-		"idle" | "processing" | "success" | "failed"
-	>("idle");
+	const [mergeStatus, setMergeStatus] = useState<MergeState>("IDLE");
 	const [resultVideoUrl, setResultVideoUrl] = useState<string>("");
+	const [taskId, setTaskId] = useState<string | null>(null);
+	const statusPollTimeout = useRef<number | null>(null);
+
+	const clearStatusPolling = useCallback(() => {
+		if (statusPollTimeout.current !== null) {
+			window.clearTimeout(statusPollTimeout.current);
+			statusPollTimeout.current = null;
+		}
+	}, []);
 
 	const previewSources = useMemo(
 		() =>
@@ -230,6 +253,12 @@ export default function Dashboard({
 		};
 	}, [previewSources]);
 
+	useEffect(() => {
+		return () => {
+			clearStatusPolling();
+		};
+	}, [clearStatusPolling]);
+
 	const handleMerge = async () => {
 		if (!selectedTransition || selectedVideos.length === 0) {
 			alert("Please select a transition and at least one video");
@@ -237,96 +266,115 @@ export default function Dashboard({
 		}
 
 		setIsProcessing(true);
-		setMergeStatus("processing");
+		setMergeStatus("PENDING");
+		setTaskId(null);
+		clearStatusPolling();
+		setResultVideoUrl("");
 
 		try {
 			const formData = new FormData();
 			formData.append("transition", selectedTransition);
-			selectedVideos.forEach((video, index) => {
-				formData.append(`video_${index}`, video);
+			selectedVideos.forEach((video) => {
+				formData.append("videos", video);
 			});
 			if (selectedAudio) {
 				formData.append("audio", selectedAudio);
 			}
 
-			const response = await fetch("/api/merge", {
+			const response = await fetch(`${API_BASE_URL}/api/video/merge`, {
 				method: "POST",
-				headers: {
-					Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-				},
 				body: formData,
 			});
 
-			if (response.ok) {
-				const data = await response.json();
-				pollMergeStatus(data.jobId);
-			} else {
-				throw new Error("Merge request failed");
+			if (!response.ok) {
+				throw new Error(`Merge request failed with status ${response.status}`);
 			}
+
+			const data = await response.json();
+
+			const nextTaskId: string | undefined =
+				data.task_id ?? data.taskId ?? data.id;
+
+			if (!nextTaskId) {
+				throw new Error("Merge response missing task_id");
+			}
+
+			setTaskId(nextTaskId);
+
+			const initialStatus = normaliseVideoStatus(data.status);
+			setMergeStatus(initialStatus);
+
+			if (initialStatus === "SUCCESS") {
+				completeMerge(nextTaskId);
+				return;
+			}
+
+			if (initialStatus === "FAILURE") {
+				setIsProcessing(false);
+				return;
+			}
+
+			pollMergeStatus(nextTaskId);
 		} catch (error) {
 			console.error("Merge failed:", error);
-			setMergeStatus("failed");
+			setMergeStatus("FAILURE");
 			setIsProcessing(false);
+			clearStatusPolling();
 		}
 	};
 
-	const pollMergeStatus = async (jobId: string) => {
-		const poll = async () => {
-			try {
-				const response = await fetch(`/api/merge/status/${jobId}`, {
-					headers: {
-						Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-					},
-				});
+	const completeMerge = useCallback((currentTaskId: string) => {
+		const playbackUrl = `${API_BASE_URL}/api/video/merge?task_id=${encodeURIComponent(currentTaskId)}`;
+		setResultVideoUrl(playbackUrl);
+		setIsProcessing(false);
+		clearStatusPolling();
+	}, [clearStatusPolling]);
 
-				if (response.ok) {
-					const data = await response.json();
-
-					if (data.status === "SUCCESS") {
-						setMergeStatus("success");
-						setIsProcessing(false);
-						fetchResultVideo(jobId);
-					} else if (data.status === "FAILED") {
-						setMergeStatus("failed");
-						setIsProcessing(false);
-					} else {
-						setTimeout(poll, 2000);
-					}
-				}
-			} catch (error) {
-				console.error("Status polling failed:", error);
-				setMergeStatus("failed");
-				setIsProcessing(false);
-			}
-		};
-
-		poll();
-	};
-
-	const fetchResultVideo = async (jobId: string) => {
+	const pollMergeStatus = useCallback(async (currentTaskId: string) => {
 		try {
-			const response = await fetch(`/api/merge/result/${jobId}`, {
-				headers: {
-					Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-				},
-			});
-
-			if (response.ok) {
-				const blob = await response.blob();
-				const url = URL.createObjectURL(blob);
-				setResultVideoUrl(url);
+			const response = await fetch(`${API_BASE_URL}/api/video/merge/status?task_id=${encodeURIComponent(currentTaskId)}`);
+			if (!response.ok) {
+				throw new Error(`Status request failed with ${response.status}`);
 			}
+
+			const data = await response.json();
+
+			const nextStatus = normaliseVideoStatus(data.status);
+
+			if (nextStatus === "SUCCESS") {
+				setMergeStatus("SUCCESS");
+				completeMerge(currentTaskId);
+				return;
+			}
+
+			if (nextStatus === "FAILURE") {
+				setMergeStatus("FAILURE");
+				setIsProcessing(false);
+				clearStatusPolling();
+				return;
+			}
+
+			setMergeStatus(nextStatus);
+			statusPollTimeout.current = window.setTimeout(() => {
+				pollMergeStatus(currentTaskId);
+			}, 2000);
 		} catch (error) {
-			console.error("Failed to fetch result video:", error);
+			console.error("Status polling failed:", error);
+			setMergeStatus("FAILURE");
+			setIsProcessing(false);
+			clearStatusPolling();
 		}
-	};
+	}, [clearStatusPolling, completeMerge]);
 
 	const resetMerge = () => {
-		setMergeStatus("idle");
+		clearStatusPolling();
+		setMergeStatus("IDLE");
 		setResultVideoUrl("");
 		setSelectedTransition("");
 		setSelectedVideos([]);
 		setSelectedAudio(null);
+		setTaskId(null);
+		setIsProcessing(false);
 	};
 
 	const previewTransition = transitionsByName[selectedTransition];
@@ -421,6 +469,7 @@ export default function Dashboard({
 							/>
 							<MergeResult
 								status={mergeStatus}
+								taskId={taskId}
 								videoUrl={resultVideoUrl}
 								onReset={resetMerge}
 							/>
@@ -438,3 +487,5 @@ export default function Dashboard({
 		</div>
 	);
 }
+
+
