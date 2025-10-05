@@ -1,50 +1,102 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'wouter';
-import GoogleLoginButton from '../components/GoogleLoginButton';
+import { useMemo, useState } from "react";
+import { Link, useLocation } from "wouter";
+
+import GoogleLoginButton from "../components/GoogleLoginButton";
+import {
+    buildAuthHeaders,
+    DEFAULT_PLAN_MAX_VIDEOS,
+    persistSession,
+} from "@/lib/auth";
+
+interface TokenResponse {
+    access_token: string;
+    token_type?: string;
+    provider?: string;
+}
 
 export default function SignupPage() {
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [location, navigate] = useLocation();
+    const [error, setError] = useState("");
+    const [, navigate] = useLocation();
 
-    const handleLogin = async (userEmail: string, token: string, maxVideos: number) => {
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('userEmail', userEmail);
-        localStorage.setItem('planMaxVideos', maxVideos.toString());
-        navigate('/');
+    const fullName = useMemo(() => {
+        return [firstName.trim(), lastName.trim()].filter(Boolean).join(" ").trim();
+    }, [firstName, lastName]);
+
+    const handleLogin = (
+        userEmail: string,
+        token: string,
+        _maxVideos: number,
+        userFullName?: string,
+        tokenType?: string,
+        provider?: string,
+    ) => {
+        persistSession(
+            {
+                email: userEmail,
+                token,
+                tokenType,
+                provider,
+                fullName: userFullName,
+            },
+            DEFAULT_PLAN_MAX_VIDEOS,
+        );
+        navigate("/");
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setError("");
+
+        if (password.length < 8) {
+            setError("Password must be at least 8 characters long.");
+            return;
+        }
+
         setLoading(true);
-        setError('');
 
         try {
-            const response = await fetch('/api/auth/signup', {
-                method: 'POST',
+            const response = await fetch("/api/auth/register", {
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json',
+                    "Content-Type": "application/json",
+                    ...buildAuthHeaders(),
                 },
-                body: JSON.stringify({ firstName, lastName, email, password }),
+                body: JSON.stringify({
+                    email,
+                    password,
+                    full_name: fullName || undefined,
+                }),
             });
 
             if (response.ok) {
-                const data = await response.json();
-                handleLogin(data.email, data.token, data.planMaxVideos);
-            } else {
-                const errorData = await response.json();
-                setError(errorData.message || 'Signup failed');
+                const data: TokenResponse = await response.json();
+                handleLogin(
+                    email,
+                    data.access_token,
+                    DEFAULT_PLAN_MAX_VIDEOS,
+                    fullName || undefined,
+                    data.token_type,
+                    data.provider,
+                );
+                return;
             }
-        } catch (error) {
-            let message = 'Network error. Please try again.';
-            if (error && typeof error === 'object' && 'message' in error) {
-                message = (error as { message: string }).message || message;
+
+            let message = "Signup failed";
+            try {
+                const errorData = await response.json();
+                message = errorData?.detail ?? errorData?.message ?? message;
+            } catch (parseError) {
+                console.error("Failed to parse signup error", parseError);
             }
             setError(message);
+        } catch (requestError) {
+            console.error("Signup request failed", requestError);
+            setError("Network error. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -54,9 +106,9 @@ export default function SignupPage() {
         <div className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-50 to-indigo-100 relative overflow-hidden">
             {/* Animated background blobs */}
             <div className="absolute inset-0">
-                <div className="absolute top-20 left-20 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-                <div className="absolute top-40 right-20 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-                <div className="absolute bottom-20 left-1/2 w-72 h-72 bg-indigo-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+                <div className="absolute top-20 left-20 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob" />
+                <div className="absolute top-40 right-20 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000" />
+                <div className="absolute bottom-20 left-1/2 w-72 h-72 bg-indigo-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000" />
             </div>
 
             <div className="relative z-10 min-h-screen flex items-center justify-center p-6">
@@ -69,26 +121,28 @@ export default function SignupPage() {
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="first-name">
                                     First Name
                                 </label>
                                 <input
+                                    id="first-name"
                                     type="text"
                                     value={firstName}
-                                    onChange={(e) => setFirstName(e.target.value)}
+                                    onChange={(event) => setFirstName(event.target.value)}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                                     placeholder="First name"
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="last-name">
                                     Last Name
                                 </label>
                                 <input
+                                    id="last-name"
                                     type="text"
                                     value={lastName}
-                                    onChange={(e) => setLastName(e.target.value)}
+                                    onChange={(event) => setLastName(event.target.value)}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                                     placeholder="Last name"
                                     required
@@ -97,13 +151,14 @@ export default function SignupPage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="email">
                                 Email
                             </label>
                             <input
+                                id="email"
                                 type="email"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                onChange={(event) => setEmail(event.target.value)}
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                                 placeholder="Enter your email"
                                 required
@@ -111,16 +166,18 @@ export default function SignupPage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="password">
                                 Password
                             </label>
                             <input
+                                id="password"
                                 type="password"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                onChange={(event) => setPassword(event.target.value)}
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                                 placeholder="Create a password"
                                 required
+                                minLength={8}
                             />
                         </div>
 
@@ -135,7 +192,7 @@ export default function SignupPage() {
                             disabled={loading}
                             className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {loading ? 'Creating account...' : 'Create Account'}
+                            {loading ? "Creating account..." : "Create Account"}
                         </button>
                     </form>
 
@@ -160,35 +217,35 @@ export default function SignupPage() {
 
                     <div className="mt-8 text-center">
                         <p className="text-gray-600">
-                            Already have an account?{' '}
+                            Already have an account?{" "}
                             <Link href="/login" className="text-purple-600 hover:text-purple-700 font-medium">
                                 Sign in
                             </Link>
                         </p>
                         <Link href="/" className="block mt-4 text-sm text-gray-500 hover:text-gray-700">
-                            ← Back to home
+                            Back to home
                         </Link>
                     </div>
                 </div>
             </div>
 
-            <style jsx>{/* css */`
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
+            <style jsx>{`
+                @keyframes blob {
+                    0% { transform: translate(0px, 0px) scale(1); }
+                    33% { transform: translate(30px, -50px) scale(1.1); }
+                    66% { transform: translate(-20px, 20px) scale(0.9); }
+                    100% { transform: translate(0px, 0px) scale(1); }
+                }
+                .animate-blob {
+                    animation: blob 7s infinite;
+                }
+                .animation-delay-2000 {
+                    animation-delay: 2s;
+                }
+                .animation-delay-4000 {
+                    animation-delay: 4s;
+                }
+            `}</style>
         </div>
     );
 }

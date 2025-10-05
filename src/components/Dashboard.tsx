@@ -4,6 +4,7 @@ import {
 } from "@/lib/transitions";
 import type { TransitionObject } from "gl-transition-utils/lib/transformSource";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { buildAuthHeaders } from "@/lib/auth";
 import AnimatedVignette from "./AnimatedVignette";
 import AudioUploader from "./AudioUploader";
 import HistoryDialog from "./HistoryDialog";
@@ -35,9 +36,11 @@ function normaliseVideoStatus(value: unknown): VideoStatus {
 
 interface DashboardProps {
 	userEmail: string;
+	userName?: string;
 	planMaxVideos: number;
 	onLogout: () => void;
 }
+
 
 interface TransitionGalleryProps {
 	selectedTransition: string;
@@ -217,6 +220,7 @@ function TransitionPreview({
 
 export default function Dashboard({
 	userEmail,
+	userName,
 	planMaxVideos,
 	onLogout,
 }: DashboardProps) {
@@ -283,6 +287,7 @@ export default function Dashboard({
 
 			const response = await fetch(`${API_BASE_URL}/api/video/merge`, {
 				method: "POST",
+				headers: buildAuthHeaders(),
 				body: formData,
 			});
 
@@ -332,7 +337,9 @@ export default function Dashboard({
 
 	const pollMergeStatus = useCallback(async (currentTaskId: string) => {
 		try {
-			const response = await fetch(`${API_BASE_URL}/api/video/merge/status?task_id=${encodeURIComponent(currentTaskId)}`);
+			const response = await fetch(`${API_BASE_URL}/api/video/merge/status?task_id=${encodeURIComponent(currentTaskId)}`, {
+			headers: buildAuthHeaders(),
+		});
 			if (!response.ok) {
 				throw new Error(`Status request failed with ${response.status}`);
 			}
@@ -386,7 +393,7 @@ export default function Dashboard({
 					Video Merger Dashboard
 				</h1>
 				<div className="flex items-center gap-4">
-					<span className="text-gray-600">Welcome, {userEmail}</span>
+					<span className="text-gray-600">Welcome, {userName ?? userEmail}</span>
 					<button
 						type="button"
 						onClick={() => setShowHistoryDialog(true)}
@@ -487,5 +494,6 @@ export default function Dashboard({
 		</div>
 	);
 }
+
 
 

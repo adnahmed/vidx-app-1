@@ -1,10 +1,12 @@
 import { GoogleLogin } from '@react-oauth/google';
 import React from 'react';
 
+import { DEFAULT_PLAN_MAX_VIDEOS } from "@/lib/auth";
+
 interface GoogleLoginButtonProps {
     text?: string;
     className?: string;
-    onSuccess: (email: string, token: string, maxVideos: number) => void;
+    onSuccess: (email: string, token: string, maxVideos: number, fullName?: string, tokenType?: string, provider?: string) => void;
     useOneTap?: boolean;
 }
 
@@ -31,7 +33,19 @@ const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({
             })
             .then(data => {
                 // Call the onSuccess callback with user data from your backend
-                onSuccess(data.email, data.token, data.planMaxVideos || 10);
+                const token = data.access_token ?? data.token;
+                if (!token) {
+                    throw new Error('Google authentication response missing token');
+                }
+                const maxVideos = data.planMaxVideos ?? DEFAULT_PLAN_MAX_VIDEOS;
+                onSuccess(
+                    data.email,
+                    token,
+                    maxVideos,
+                    data.full_name ?? data.name,
+                    data.token_type,
+                    data.provider,
+                );
             })
             .catch(error => {
                 console.error('Google login error:', error);

@@ -6,7 +6,7 @@ import GoogleLoginButton from "./GoogleLoginButton";
 import Preview from "./Preview";
 
 interface LandingPageProps {
-	onLogin: (email: string, token: string, maxVideos: number) => void;
+	onLogin: (email: string, token: string, maxVideos: number, fullName?: string, tokenType?: string, provider?: string) => void;
 }
 
 export default function LandingPage({ onLogin }: LandingPageProps) {

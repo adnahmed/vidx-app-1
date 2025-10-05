@@ -1,55 +1,66 @@
-import { useEffect, useState } from 'react';
-import './Main.css';
-import Dashboard from './components/Dashboard';
-import LandingPage from './components/LandingPage';
+import { useEffect, useState } from "react";
+
+import {
+	type AuthSession,
+	clearSession,
+	DEFAULT_PLAN_MAX_VIDEOS,
+	persistSession,
+	readSession,
+	type StoredSession,
+} from "@/lib/auth";
+import Dashboard from "./components/Dashboard";
+import LandingPage from "./components/LandingPage";
+import "./Main.css";
 
 function Main() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
-  const [planMaxVideos, setPlanMaxVideos] = useState(10);
+	const [session, setSession] = useState<StoredSession | null>(null);
 
-  useEffect(() => {
-    // Check if user is logged in
-    const token = localStorage.getItem('authToken');
-    const email = localStorage.getItem('userEmail');
-    const maxVideos = localStorage.getItem('planMaxVideos');
+	useEffect(() => {
+		const storedSession = readSession();
+		if (storedSession) {
+			setSession(storedSession);
+		}
+	}, []);
 
-    if (token && email) {
-      setIsLoggedIn(true);
-      setUserEmail(email);
-      setPlanMaxVideos(parseInt(maxVideos || '10'));
-    }
-  }, []);
+	const handleLogin = (
+		email: string,
+		token: string,
+		maxVideos: number = DEFAULT_PLAN_MAX_VIDEOS,
+		fullName?: string,
+		tokenType?: string,
+		provider?: string,
+	) => {
+		const authSession: AuthSession = {
+			email,
+			token,
+			tokenType,
+			provider,
+			fullName,
+		};
+		persistSession(authSession, maxVideos || DEFAULT_PLAN_MAX_VIDEOS);
+		setSession({
+			...authSession,
+			planMaxVideos: maxVideos || DEFAULT_PLAN_MAX_VIDEOS,
+		});
+	};
 
-  const handleLogin = (email: string, token: string, maxVideos: number) => {
-    localStorage.setItem('authToken', token);
-    localStorage.setItem('userEmail', email);
-    localStorage.setItem('planMaxVideos', maxVideos.toString());
-    setIsLoggedIn(true);
-    setUserEmail(email);
-    setPlanMaxVideos(maxVideos);
-  };
+	const handleLogout = () => {
+		clearSession();
+		setSession(null);
+	};
 
-  const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('planMaxVideos');
-    setIsLoggedIn(false);
-    setUserEmail('');
-    setPlanMaxVideos(10);
-  };
+	if (session) {
+		return (
+			<Dashboard
+				userEmail={session.email}
+				userName={session.fullName}
+				planMaxVideos={session.planMaxVideos}
+				onLogout={handleLogout}
+			/>
+		);
+	}
 
-  if (isLoggedIn) {
-    return (
-      <Dashboard
-        userEmail={userEmail}
-        planMaxVideos={planMaxVideos}
-        onLogout={handleLogout}
-      />
-    );
-  }
-
-  return <LandingPage onLogin={handleLogin} />;
+	return <LandingPage onLogin={handleLogin} />;
 }
 
 export default Main;
