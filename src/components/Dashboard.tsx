@@ -291,12 +291,11 @@ export default function Dashboard({
 				formData.append("audio", selectedAudio);
 			}
 
-			const response = await fetch(`${API_BASE_URL}/api/video/merge`, {
+			const response = await fetch(`${API_BASE_URL}/video/merge`, {
 				method: "POST",
 				headers: buildAuthHeaders(),
 				body: formData,
 			});
-
 			if (!response.ok) {
 				throw new Error(`Merge request failed with status ${response.status}`);
 			}
@@ -336,7 +335,7 @@ export default function Dashboard({
 
 	const completeMerge = useCallback(
 		(currentTaskId: string) => {
-			const playbackUrl = `${API_BASE_URL}/api/video/merge?task_id=${encodeURIComponent(currentTaskId)}`;
+			const playbackUrl = `${API_BASE_URL}/video/merge?task_id=${encodeURIComponent(currentTaskId)}`;
 			setResultVideoUrl(playbackUrl);
 			setIsProcessing(false);
 			clearStatusPolling();
@@ -348,7 +347,7 @@ export default function Dashboard({
 		async (currentTaskId: string) => {
 			try {
 				const response = await fetch(
-					`${API_BASE_URL}/api/video/merge/status?task_id=${encodeURIComponent(currentTaskId)}`,
+					`${API_BASE_URL}/video/merge/status?task_id=${encodeURIComponent(currentTaskId)}`,
 					{
 						headers: buildAuthHeaders(),
 					},

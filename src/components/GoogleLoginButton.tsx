@@ -28,7 +28,7 @@ const GoogleLoginButton = ({
 		// Note: The schema shows GET /api/auth/google/login and GET /api/auth/google/callback
 		// This implementation posts the Google credential to a hypothetical endpoint
 		// You may need to adjust this based on your actual OAuth flow
-		fetch(`${API_BASE_URL}/api/auth/google/callback`, {
+		fetch(`${API_BASE_URL}/auth/google/callback`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",

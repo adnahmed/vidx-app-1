@@ -38,7 +38,7 @@ export default function HistoryDialog({ onClose }: HistoryDialogProps) {
 
 						try {
 							const response = await fetch(
-								`${API_BASE_URL}/api/video/history?limit=${PAGE_SIZE}&offset=${nextOffset}`,
+								`${API_BASE_URL}/video/history?limit=${PAGE_SIZE}&offset=${nextOffset}`,
 								{
 									headers: buildAuthHeaders(),
 								},

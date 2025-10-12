@@ -22,7 +22,7 @@ async function fetchTranscript(
 		preserve_formatting: false,
 	};
 
-	const response = await fetch(`${API_BASE_URL}/api/transcript/fetch`, {
+	const response = await fetch(`${API_BASE_URL}/transcript/fetch`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
@@ -96,3 +96,4 @@ exampleUrls.forEach((url) => {
 });
 
 export { extractVideoId, fetchTranscript };
+
