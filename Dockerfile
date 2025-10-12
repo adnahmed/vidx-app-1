@@ -5,11 +5,16 @@ WORKDIR /app
 # install deps first for better caching
 # copy package manifest(s) first so layer can be cached separately from source
 COPY package*.json ./
+# Copy yarn.lock if present so the layer cache can detect changes to the lockfile
+COPY yarn.lock ./
 # Use npm ci when a lockfile exists for reproducible builds; fall back to npm install otherwise.
 # This prevents build failures in environments where package-lock.json is not present.
 RUN if [ -f yarn.lock ]; then \
-    # Use yarn if a yarn.lock is present
-    yarn install --frozen-lockfile || yarn install; \
+    # Ensure Corepack / Yarn are available in the lightweight node image
+    corepack enable; \
+    corepack prepare yarn@stable --activate; \
+    # Use Yarn's immutable install for reproducibility. Newer Yarn recommends --immutable --immutable-cache --check-cache
+    yarn install --immutable --immutable-cache --check-cache || yarn install --frozen-lockfile || yarn install; \
     elif [ -f package-lock.json ]; then \
     # Use npm ci when a lockfile exists for reproducible builds
     npm ci; \
