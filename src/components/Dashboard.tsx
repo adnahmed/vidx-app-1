@@ -1,15 +1,17 @@
+import { API_BASE_URL } from "@/lib/api";
+import { buildAuthHeaders } from "@/lib/auth";
 import {
 	transitionsByName,
 	transitionsOrderByCreatedAt,
 } from "@/lib/transitions";
 import type { TransitionObject } from "gl-transition-utils/lib/transformSource";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { buildAuthHeaders } from "@/lib/auth";
 import AnimatedVignette from "./AnimatedVignette";
 import AudioUploader from "./AudioUploader";
 import HistoryDialog from "./HistoryDialog";
 import MergeResult from "./MergeResult";
 import { TrackVisibility } from "./TrackVisibility";
+import TranscriptTab from "./TranscriptTab";
 import UpgradeDialog from "./UpgradeDialog";
 import VideoUploader from "./VideoUploader";
 import Vignette from "./Vignette";
@@ -18,17 +20,17 @@ const galleryFromImage = "/images/600x400/barley.jpg";
 const galleryToImage = "/images/600x400/hBd6EPoQT2C8VQYv65ys_White_Sands.jpg";
 const galleryPageSize = 6;
 
-const API_BASE_URL =
-	process.env.NODE_ENV === "development"
-		? "http://localhost:8000"
-		: "http://212.85.25.109:8000";
-
 type VideoStatus = "PENDING" | "STARTED" | "SUCCESS" | "FAILURE";
 type MergeState = "IDLE" | VideoStatus;
 
 function normaliseVideoStatus(value: unknown): VideoStatus {
 	const upper = typeof value === "string" ? value.toUpperCase() : "";
-	if (upper === "PENDING" || upper === "STARTED" || upper === "SUCCESS" || upper === "FAILURE") {
+	if (
+		upper === "PENDING" ||
+		upper === "STARTED" ||
+		upper === "SUCCESS" ||
+		upper === "FAILURE"
+	) {
 		return upper as VideoStatus;
 	}
 	return "PENDING";
@@ -40,7 +42,6 @@ interface DashboardProps {
 	planMaxVideos: number;
 	onLogout: () => void;
 }
-
 
 interface TransitionGalleryProps {
 	selectedTransition: string;
@@ -161,7 +162,7 @@ function TransitionPreview({
 }: TransitionPreviewProps) {
 	const previewVideos = useMemo(
 		() =>
-			videoSources.map(({ url, name }, index) => (
+			videoSources.map(({ url, name }) => (
 				<video
 					key={url + name}
 					src={url}
@@ -218,12 +219,15 @@ function TransitionPreview({
 	);
 }
 
+type TabType = "merge" | "transcript";
+
 export default function Dashboard({
 	userEmail,
 	userName,
 	planMaxVideos,
 	onLogout,
 }: DashboardProps) {
+	const [activeTab, setActiveTab] = useState<TabType>("merge");
 	const [selectedTransition, setSelectedTransition] = useState<string>("");
 	const [selectedVideos, setSelectedVideos] = useState<File[]>([]);
 	const [selectedAudio, setSelectedAudio] = useState<File | null>(null);
@@ -253,7 +257,9 @@ export default function Dashboard({
 
 	useEffect(() => {
 		return () => {
-			previewSources.forEach(({ url }) => URL.revokeObjectURL(url));
+			for (const { url } of previewSources) {
+				URL.revokeObjectURL(url);
+			}
 		};
 	}, [previewSources]);
 
@@ -328,50 +334,59 @@ export default function Dashboard({
 		}
 	};
 
-	const completeMerge = useCallback((currentTaskId: string) => {
-		const playbackUrl = `${API_BASE_URL}/api/video/merge?task_id=${encodeURIComponent(currentTaskId)}`;
-		setResultVideoUrl(playbackUrl);
-		setIsProcessing(false);
-		clearStatusPolling();
-	}, [clearStatusPolling]);
+	const completeMerge = useCallback(
+		(currentTaskId: string) => {
+			const playbackUrl = `${API_BASE_URL}/api/video/merge?task_id=${encodeURIComponent(currentTaskId)}`;
+			setResultVideoUrl(playbackUrl);
+			setIsProcessing(false);
+			clearStatusPolling();
+		},
+		[clearStatusPolling],
+	);
 
-	const pollMergeStatus = useCallback(async (currentTaskId: string) => {
-		try {
-			const response = await fetch(`${API_BASE_URL}/api/video/merge/status?task_id=${encodeURIComponent(currentTaskId)}`, {
-			headers: buildAuthHeaders(),
-		});
-			if (!response.ok) {
-				throw new Error(`Status request failed with ${response.status}`);
-			}
+	const pollMergeStatus = useCallback(
+		async (currentTaskId: string) => {
+			try {
+				const response = await fetch(
+					`${API_BASE_URL}/api/video/merge/status?task_id=${encodeURIComponent(currentTaskId)}`,
+					{
+						headers: buildAuthHeaders(),
+					},
+				);
+				if (!response.ok) {
+					throw new Error(`Status request failed with ${response.status}`);
+				}
 
-			const data = await response.json();
+				const data = await response.json();
 
-			const nextStatus = normaliseVideoStatus(data.status);
+				const nextStatus = normaliseVideoStatus(data.status);
 
-			if (nextStatus === "SUCCESS") {
-				setMergeStatus("SUCCESS");
-				completeMerge(currentTaskId);
-				return;
-			}
+				if (nextStatus === "SUCCESS") {
+					setMergeStatus("SUCCESS");
+					completeMerge(currentTaskId);
+					return;
+				}
 
-			if (nextStatus === "FAILURE") {
+				if (nextStatus === "FAILURE") {
+					setMergeStatus("FAILURE");
+					setIsProcessing(false);
+					clearStatusPolling();
+					return;
+				}
+
+				setMergeStatus(nextStatus);
+				statusPollTimeout.current = window.setTimeout(() => {
+					pollMergeStatus(currentTaskId);
+				}, 2000);
+			} catch (error) {
+				console.error("Status polling failed:", error);
 				setMergeStatus("FAILURE");
 				setIsProcessing(false);
 				clearStatusPolling();
-				return;
 			}
-
-			setMergeStatus(nextStatus);
-			statusPollTimeout.current = window.setTimeout(() => {
-				pollMergeStatus(currentTaskId);
-			}, 2000);
-		} catch (error) {
-			console.error("Status polling failed:", error);
-			setMergeStatus("FAILURE");
-			setIsProcessing(false);
-			clearStatusPolling();
-		}
-	}, [clearStatusPolling, completeMerge]);
+		},
+		[clearStatusPolling, completeMerge],
+	);
 
 	const resetMerge = () => {
 		clearStatusPolling();
@@ -393,7 +408,9 @@ export default function Dashboard({
 					Video Merger Dashboard
 				</h1>
 				<div className="flex items-center gap-4">
-					<span className="text-gray-600">Welcome, {userName ?? userEmail}</span>
+					<span className="text-gray-600">
+						Welcome, {userName ?? userEmail}
+					</span>
 					<button
 						type="button"
 						onClick={() => setShowHistoryDialog(true)}
@@ -419,70 +436,105 @@ export default function Dashboard({
 			</header>
 
 			<div className="p-8">
-				<div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:grid-cols-4">
-					<div className="space-y-6 lg:col-span-3">
-						<div className="rounded-xl bg-white p-6 shadow-lg">
-							<h2 className="mb-4 text-xl font-semibold text-gray-800">
-								Select Transition
-							</h2>
-							<TransitionGallery
-								selectedTransition={selectedTransition}
-								onSelect={setSelectedTransition}
-							/>
-						</div>
-						<div className="rounded-xl bg-white p-6 shadow-lg">
-							<h2 className="mb-4 text-xl font-semibold text-gray-800">
-								Upload Videos (Max: {planMaxVideos})
-							</h2>
-							<VideoUploader
-								selectedVideos={selectedVideos}
-								onVideosChange={setSelectedVideos}
-								maxVideos={planMaxVideos}
-							/>
-						</div>
-
-						<div className="rounded-xl bg-white p-6 shadow-lg">
-							<h2 className="mb-4 text-xl font-semibold text-gray-800">
-								Background Audio (Optional)
-							</h2>
-							<AudioUploader
-								selectedAudio={selectedAudio}
-								onAudioChange={setSelectedAudio}
-							/>
-						</div>
-
+				{/* Tab Navigation */}
+				<div className="mx-auto mb-6 max-w-7xl">
+					<div className="flex gap-2 rounded-lg bg-white p-2 shadow-md">
 						<button
-							type="submit"
-							onClick={handleMerge}
-							disabled={
-								isProcessing ||
-								!selectedTransition ||
-								selectedVideos.length === 0
-							}
-							className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:from-purple-700 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+							type="button"
+							onClick={() => setActiveTab("merge")}
+							className={`flex-1 rounded-md px-6 py-3 font-semibold transition-all ${
+								activeTab === "merge"
+									? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
+									: "text-gray-600 hover:bg-gray-100"
+							}`}
 						>
-							{isProcessing ? "Processing..." : "Merge Videos"}
+							Video Merger
+						</button>
+						<button
+							type="button"
+							onClick={() => setActiveTab("transcript")}
+							className={`flex-1 rounded-md px-6 py-3 font-semibold transition-all ${
+								activeTab === "transcript"
+									? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
+									: "text-gray-600 hover:bg-gray-100"
+							}`}
+						>
+							YouTube Transcript
 						</button>
 					</div>
+				</div>
 
-					<div className="lg:col-span-1">
-						<div className="sticky top-8 rounded-xl bg-white p-6 shadow-lg">
-							<h2 className="mb-4 text-xl font-semibold text-gray-800">
-								Result
-							</h2>
-							<TransitionPreview
-								transition={previewTransition}
-								videoSources={previewSources}
-							/>
-							<MergeResult
-								status={mergeStatus}
-								taskId={taskId}
-								videoUrl={resultVideoUrl}
-								onReset={resetMerge}
-							/>
+				{/* Tab Content */}
+				{activeTab === "merge" ? (
+					<div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:grid-cols-4">
+						<div className="space-y-6 lg:col-span-3">
+							<div className="rounded-xl bg-white p-6 shadow-lg">
+								<h2 className="mb-4 text-xl font-semibold text-gray-800">
+									Select Transition
+								</h2>
+								<TransitionGallery
+									selectedTransition={selectedTransition}
+									onSelect={setSelectedTransition}
+								/>
+							</div>
+							<div className="rounded-xl bg-white p-6 shadow-lg">
+								<h2 className="mb-4 text-xl font-semibold text-gray-800">
+									Upload Videos (Max: {planMaxVideos})
+								</h2>
+								<VideoUploader
+									selectedVideos={selectedVideos}
+									onVideosChange={setSelectedVideos}
+									maxVideos={planMaxVideos}
+								/>
+							</div>
+
+							<div className="rounded-xl bg-white p-6 shadow-lg">
+								<h2 className="mb-4 text-xl font-semibold text-gray-800">
+									Background Audio (Optional)
+								</h2>
+								<AudioUploader
+									selectedAudio={selectedAudio}
+									onAudioChange={setSelectedAudio}
+								/>
+							</div>
+
+							<button
+								type="submit"
+								onClick={handleMerge}
+								disabled={
+									isProcessing ||
+									!selectedTransition ||
+									selectedVideos.length === 0
+								}
+								className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:from-purple-700 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+							>
+								{isProcessing ? "Processing..." : "Merge Videos"}
+							</button>
+						</div>
+
+						<div className="lg:col-span-1">
+							<div className="sticky top-8 rounded-xl bg-white p-6 shadow-lg">
+								<h2 className="mb-4 text-xl font-semibold text-gray-800">
+									Result
+								</h2>
+								<TransitionPreview
+									transition={previewTransition}
+									videoSources={previewSources}
+								/>
+								<MergeResult
+									status={mergeStatus}
+									taskId={taskId}
+									videoUrl={resultVideoUrl}
+									onReset={resetMerge}
+								/>
+							</div>
 						</div>
 					</div>
-				</div>
+				) : (
+					<div className="mx-auto max-w-7xl">
+						<TranscriptTab />
+					</div>
+				)}
 			</div>
 
 			{showUpgradeDialog && (
@@ -494,6 +546,3 @@ export default function Dashboard({
 		</div>
 	);
 }
-
-
-

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
+import { API_BASE_URL } from "@/lib/api";
 import { buildAuthHeaders } from "@/lib/auth";
 
 interface MergeHistoryItem {
@@ -26,60 +27,68 @@ export default function HistoryDialog({ onClose }: HistoryDialogProps) {
     const [hasMore, setHasMore] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        void loadHistory(0, "initial");
-    }, []);
+    const loadHistory = useCallback(
+					async (nextOffset: number, mode: LoadMode) => {
+						if (mode === "initial") {
+							setLoading(true);
+						} else {
+							setLoadingMore(true);
+						}
+						setError(null);
 
-    const loadHistory = async (nextOffset: number, mode: LoadMode) => {
-        if (mode === "initial") {
-            setLoading(true);
-        } else {
-            setLoadingMore(true);
-        }
-        setError(null);
+						try {
+							const response = await fetch(
+								`${API_BASE_URL}/api/video/history?limit=${PAGE_SIZE}&offset=${nextOffset}`,
+								{
+									headers: buildAuthHeaders(),
+								},
+							);
 
-        try {
-            const response = await fetch(`/api/video/history?limit=${PAGE_SIZE}&offset=${nextOffset}`, {
-                headers: buildAuthHeaders(),
-            });
+							if (!response.ok) {
+								if (response.status === 401) {
+									setError("You must be signed in to view your merge history.");
+								} else {
+									let detail = "Failed to fetch merge history.";
+									try {
+										const errorData = await response.json();
+										detail = errorData?.detail ?? errorData?.message ?? detail;
+									} catch {}
+									setError(detail);
+								}
+								if (mode === "initial") {
+									setHistory([]);
+								}
+								setHasMore(false);
+								return;
+							}
 
-            if (!response.ok) {
-                if (response.status === 401) {
-                    setError("You must be signed in to view your merge history.");
-                } else {
-                    let detail = "Failed to fetch merge history.";
-                    try {
-                        const errorData = await response.json();
-                        detail = errorData?.detail ?? errorData?.message ?? detail;
-                    } catch {}
-                    setError(detail);
-                }
-                if (mode === "initial") {
-                    setHistory([]);
-                }
-                setHasMore(false);
-                return;
-            }
+							const data: MergeHistoryItem[] = await response.json();
+							setHistory((current) =>
+								mode === "initial" ? data : [...current, ...data],
+							);
+							setOffset(nextOffset + data.length);
+							setHasMore(data.length === PAGE_SIZE);
+						} catch (requestError) {
+							console.error("Failed to load merge history", requestError);
+							setError("A network error occurred while fetching history.");
+							if (mode === "initial") {
+								setHistory([]);
+							}
+							setHasMore(false);
+						} finally {
+							if (mode === "initial") {
+								setLoading(false);
+							} else {
+								setLoadingMore(false);
+							}
+						}
+					},
+					[],
+				);
 
-            const data: MergeHistoryItem[] = await response.json();
-            setHistory((current) => (mode === "initial" ? data : [...current, ...data]));
-            setOffset(nextOffset + data.length);
-            setHasMore(data.length === PAGE_SIZE);
-        } catch (requestError) {
-            console.error("Failed to load merge history", requestError);
-            setError("A network error occurred while fetching history.");
-            if (mode === "initial") {
-                setHistory([]);
-            }
-            setHasMore(false);
-        } finally {
-            if (mode === "initial") {
-                setLoading(false);
-            } else {
-                setLoadingMore(false);
-            }
-        }
-    };
+				useEffect(() => {
+					void loadHistory(0, "initial");
+				}, [loadHistory]);
 
     const handleLoadMore = () => {
         void loadHistory(offset, "append");
