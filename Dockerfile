@@ -3,8 +3,20 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # install deps first for better caching
+# copy package manifest(s) first so layer can be cached separately from source
 COPY package*.json ./
-RUN npm ci
+# Use npm ci when a lockfile exists for reproducible builds; fall back to npm install otherwise.
+# This prevents build failures in environments where package-lock.json is not present.
+RUN if [ -f yarn.lock ]; then \
+    # Use yarn if a yarn.lock is present
+    yarn install --frozen-lockfile || yarn install; \
+    elif [ -f package-lock.json ]; then \
+    # Use npm ci when a lockfile exists for reproducible builds
+    npm ci; \
+    else \
+    # Fallback to npm install when no lockfile is present
+    npm install; \
+    fi
 
 # copy source
 COPY . .
