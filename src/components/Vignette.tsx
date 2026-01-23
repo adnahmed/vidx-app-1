@@ -207,6 +207,8 @@ const Vignette = forwardRef<VignetteHandle, VignetteProps>(
 						from={from}
 						to={to}
 						progress={progress}
+						width={width}
+						height={height}
 					/>
 				</Surface>
 

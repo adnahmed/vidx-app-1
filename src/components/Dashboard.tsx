@@ -15,6 +15,19 @@ import TranscriptTab from "./TranscriptTab";
 import UpgradeDialog from "./UpgradeDialog";
 import VideoUploader from "./VideoUploader";
 import Vignette from "./Vignette";
+import {
+	FaBolt,
+	FaChevronLeft,
+	FaChevronRight,
+	FaFileAlt,
+	FaFilm,
+	FaHistory,
+	FaMusic,
+	FaPlay,
+	FaSignOutAlt,
+	FaUser,
+} from "react-icons/fa";
+import { MdDashboard } from "react-icons/md";
 
 const galleryFromImage = "/images/600x400/barley.jpg";
 const galleryToImage = "/images/600x400/hBd6EPoQT2C8VQYv65ys_White_Sands.jpg";
@@ -55,17 +68,13 @@ function TransitionGallery({
 	const [page, setPage] = useState(0);
 
 	useEffect(() => {
-		if (!selectedTransition) {
-			return;
-		}
+		if (!selectedTransition) return;
 
 		const index = transitionsOrderByCreatedAt.findIndex(
 			(transition) => transition.name === selectedTransition,
 		);
 
-		if (index === -1) {
-			return;
-		}
+		if (index === -1) return;
 
 		const nextPage = Math.floor(index / galleryPageSize);
 		setPage((current) => (current === nextPage ? current : nextPage));
@@ -81,70 +90,68 @@ function TransitionGallery({
 		pageStart + galleryPageSize,
 	);
 
-	const handlePrev = () => {
-		setPage((current) => Math.max(0, current - 1));
-	};
-
-	const handleNext = () => {
-		setPage((current) => Math.min(totalPages - 1, current + 1));
-	};
+	const handlePrev = () => setPage((current) => Math.max(0, current - 1));
+	const handleNext = () => setPage((current) => Math.min(totalPages - 1, current + 1));
 
 	return (
-		<div>
-			<div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+		<div className="space-y-4">
+			<div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
 				{pageTransitions.map((transition) => {
 					const isSelected = transition.name === selectedTransition;
-
 					return (
 						<button
 							key={transition.name}
 							type="button"
 							onClick={() => onSelect(transition.name)}
-							aria-label={`Select ${transition.name} transition`}
-							aria-pressed={isSelected}
-							className={`group relative overflow-hidden rounded-xl border-2 px-2 pb-3 pt-2 transition-all focus:outline-none focus:ring-2 focus:ring-purple-400 ${
-								isSelected
-									? "border-purple-500 shadow-xl shadow-purple-200/60"
-									: "border-transparent shadow-md hover:border-purple-300 hover:shadow-lg"
-							}`}
+							className={`group relative overflow-hidden rounded-xl border-2 transition-all duration-200 outline-none
+								${isSelected 
+									? "border-purple-600 shadow-md ring-2 ring-purple-100" 
+									: "border-slate-200 hover:border-purple-300 hover:shadow-sm"
+								}`}
 						>
-							<div className="flex justify-center">
+							<div className="aspect-video bg-slate-100 relative">
 								<Vignette
 									interaction
 									transition={transition}
 									from={galleryFromImage}
 									to={galleryToImage}
 									width={300}
-									height={200}
+									height={169}
 									preload={[galleryFromImage, galleryToImage]}
 								/>
+                {isSelected && (
+                  <div className="absolute inset-0 border-4 border-purple-600/20 rounded-lg pointer-events-none" />
+                )}
 							</div>
-							<p className="mt-2 text-center text-sm font-medium text-gray-700">
-								{transition.name}
-							</p>
+							<div className="py-2 px-3 bg-white border-t border-slate-100">
+								<p className={`text-xs font-medium truncate ${isSelected ? "text-purple-700" : "text-slate-600 group-hover:text-purple-600"}`}>
+									{transition.name}
+								</p>
+							</div>
 						</button>
 					);
 				})}
 			</div>
-			<div className="mt-4 flex items-center justify-between gap-4">
+			
+      <div className="flex items-center justify-between px-2">
 				<button
 					type="button"
 					onClick={handlePrev}
 					disabled={page === 0}
-					className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+					className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
 				>
-					Previous
+					<FaChevronLeft className="w-5 h-5 text-slate-600" />
 				</button>
-				<span className="text-sm text-gray-600">
-					Page {page + 1} of {totalPages}
+				<span className="text-xs font-medium text-slate-400">
+					{page + 1} / {totalPages}
 				</span>
 				<button
 					type="button"
 					onClick={handleNext}
 					disabled={page >= totalPages - 1}
-					className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 transition-colors hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+					className="p-1 rounded-full hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
 				>
-					Next
+					<FaChevronRight className="w-5 h-5 text-slate-600" />
 				</button>
 			</div>
 		</div>
@@ -166,10 +173,10 @@ function TransitionPreview({
 				<video
 					key={url + name}
 					src={url}
-					className="h-full w-full object-cover"
+					className="h-full w-full object-contain"
 					autoPlay
 					loop
-					// muted
+					muted
 					playsInline
 					aria-label={`${name} preview`}
 				>
@@ -178,25 +185,31 @@ function TransitionPreview({
 			)),
 		[videoSources],
 	);
-	if (!transition || videoSources.length < 2) {
-		return null;
-	}
+
+	if (!transition || videoSources.length < 2) return null;
+
 	const labelNames = videoSources.map((source) => source.name);
 	const sequenceLabel =
 		labelNames.length <= 3
-			? labelNames.join(" -> ")
-			: `${labelNames.slice(0, 3).join(" -> ")} -> ...`;
-	const width = 300;
-	const visibleHeight = Math.round((width * 544) / 1280);
+			? labelNames.join(" → ")
+			: `${labelNames.slice(0, 3).join(" → ")} → ...`;
+	
+  const width = 300;
+	const visibleHeight = Math.round((width * 9) / 16);
+
 	return (
 		<TrackVisibility>
 			{(visible) => (
-				<div className="mb-6">
-					<h3 className="mb-3 text-lg font-semibold text-gray-800">
-						Live Transition Preview
-					</h3>
+				<div className="p-4 bg-slate-900 rounded-xl shadow-lg border border-slate-800">
+					<div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
+              <FaPlay className="w-4 h-4 text-purple-400" />
+              Live Preview
+            </h3>
+            <span className="text-xs text-slate-400 font-mono">1280x720</span>
+          </div>
 
-					<div className="flex justify-center">
+					<div className="flex justify-center items-center rounded-lg overflow-hidden bg-black aspect-video ring-1 ring-white/10">
 						<AnimatedVignette
 							interaction={false}
 							paused={!visible}
@@ -210,7 +223,7 @@ function TransitionPreview({
 						/>
 					</div>
 
-					<p className="mt-2 text-center text-sm text-gray-600">
+					<p className="mt-3 text-xs text-slate-400 text-center font-mono truncate px-2">
 						{sequenceLabel}
 					</p>
 				</div>
@@ -401,140 +414,146 @@ export default function Dashboard({
 	const previewTransition = transitionsByName[selectedTransition];
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
-			<header className="flex items-center justify-between bg-white p-6 shadow-sm">
-				<h1 className="text-2xl font-bold text-gray-800">
-					Video Merger Dashboard
-				</h1>
-				<div className="flex items-center gap-4">
-					<span className="text-gray-600">
-						Welcome, {userName ?? userEmail}
-					</span>
-					<button
-						type="button"
-						onClick={() => setShowHistoryDialog(true)}
-						className="px-4 py-2 text-gray-700 transition-colors hover:text-gray-900"
-					>
-						History
-					</button>
-					<button
-						type="button"
-						onClick={() => setShowUpgradeDialog(true)}
-						className="rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-white transition-all hover:from-purple-700 hover:to-blue-700"
-					>
-						Upgrade
-					</button>
-					<button
-						type="button"
-						onClick={onLogout}
-						className="px-4 py-2 text-gray-700 transition-colors hover:text-red-600"
-					>
-						Logout
-					</button>
-				</div>
-			</header>
+		<div className="min-h-screen bg-slate-50 flex font-sans">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col">
+        <div className="p-6 border-b border-slate-100 flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold">V</div>
+          <span className="font-bold text-slate-800">VideoMerger</span>
+        </div>
+        
+        <nav className="p-4 space-y-1 flex-1">
+          <button 
+            onClick={() => setActiveTab("merge")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === "merge" ? "bg-purple-50 text-purple-700" : "text-slate-600 hover:bg-slate-50"}`}
+          >
+            <MdDashboard className="w-5 h-5" />
+            Video Studio
+          </button>
+          <button 
+            onClick={() => setActiveTab("transcript")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === "transcript" ? "bg-purple-50 text-purple-700" : "text-slate-600 hover:bg-slate-50"}`}
+          >
+            <FaFileAlt className="w-5 h-5" />
+            Transcripts
+          </button>
+        </nav>
 
-			<div className="p-8">
-				{/* Tab Navigation */}
-				<div className="mx-auto mb-6 max-w-7xl">
-					<div className="flex gap-2 rounded-lg bg-white p-2 shadow-md">
-						<button
-							type="button"
-							onClick={() => setActiveTab("merge")}
-							className={`flex-1 rounded-md px-6 py-3 font-semibold transition-all ${
-								activeTab === "merge"
-									? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
-									: "text-gray-600 hover:bg-gray-100"
-							}`}
-						>
-							Video Merger
-						</button>
-						<button
-							type="button"
-							onClick={() => setActiveTab("transcript")}
-							className={`flex-1 rounded-md px-6 py-3 font-semibold transition-all ${
-								activeTab === "transcript"
-									? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md"
-									: "text-gray-600 hover:bg-gray-100"
-							}`}
-						>
-							YouTube Transcript
-						</button>
-					</div>
-				</div>
+        <div className="p-4 border-t border-slate-100 space-y-2">
+          <div className="px-4 py-2 flex items-center gap-3 text-sm text-slate-600">
+            <FaUser className="w-4 h-4" />
+            <span className="truncate">{userName || "User"}</span>
+          </div>
+          <button 
+            onClick={() => setShowUpgradeDialog(true)}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+          >
+            <FaBolt className="w-4 h-4" />
+            Upgrade Plan
+          </button>
+          <button 
+            onClick={() => setShowHistoryDialog(true)}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+          >
+            <FaHistory className="w-4 h-4" />
+            History
+          </button>
+          <button 
+            onClick={onLogout}
+            className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            <FaSignOutAlt className="w-4 h-4" />
+            Log out
+          </button>
+        </div>
+      </aside>
 
-				{/* Tab Content */}
-				{activeTab === "merge" ? (
-					<div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:grid-cols-4">
-						<div className="space-y-6 lg:col-span-3">
-							<div className="rounded-xl bg-white p-6 shadow-lg">
-								<h2 className="mb-4 text-xl font-semibold text-gray-800">
-									Select Transition
-								</h2>
-								<TransitionGallery
-									selectedTransition={selectedTransition}
-									onSelect={setSelectedTransition}
-								/>
-							</div>
-							<div className="rounded-xl bg-white p-6 shadow-lg">
-								<h2 className="mb-4 text-xl font-semibold text-gray-800">
-									Upload Videos (Max: {planMaxVideos})
-								</h2>
-								<VideoUploader
-									selectedVideos={selectedVideos}
-									onVideosChange={setSelectedVideos}
-									maxVideos={planMaxVideos}
-								/>
-							</div>
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto">
+        <header className="bg-white border-b border-slate-200 px-8 py-4 md:hidden flex items-center justify-between">
+          <div className="font-bold text-slate-800">VideoMerger</div>
+           <button onClick={onLogout} className="text-slate-500 hover:text-slate-800"><FaSignOutAlt className="w-5 h-5"/></button>
+        </header>
 
-							<div className="rounded-xl bg-white p-6 shadow-lg">
-								<h2 className="mb-4 text-xl font-semibold text-gray-800">
-									Background Audio (Optional)
-								</h2>
-								<AudioUploader
-									selectedAudio={selectedAudio}
-									onAudioChange={setSelectedAudio}
-								/>
-							</div>
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          {activeTab === "merge" ? (
+            <div className="grid lg:grid-cols-3 gap-8">
+              {/* Left Column: Configuration */}
+              <div className="lg:col-span-2 space-y-8">
+                
+                <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-purple-100 text-purple-600 rounded-lg"><FaFilm className="w-5 h-5" /></div>
+                    <h2 className="text-lg font-bold text-slate-800">1. Select Videos</h2>
+                  </div>
+                  <VideoUploader
+                    selectedVideos={selectedVideos}
+                    onVideosChange={setSelectedVideos}
+                    maxVideos={planMaxVideos}
+                  />
+                </section>
 
-							<button
-								type="submit"
-								onClick={handleMerge}
-								disabled={
-									isProcessing ||
-									!selectedTransition ||
-									selectedVideos.length === 0
-								}
-								className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:from-purple-700 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								{isProcessing ? "Processing..." : "Merge Videos"}
-							</button>
-						</div>
+                <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                 <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><FaBolt className="w-5 h-5" /></div>
+                    <h2 className="text-lg font-bold text-slate-800">2. Choose Transition</h2>
+                  </div>
+                  <TransitionGallery
+                    selectedTransition={selectedTransition}
+                    onSelect={setSelectedTransition}
+                  />
+                </section>
 
-						<div className="lg:col-span-1">
-							<div className="sticky top-8 rounded-xl bg-white p-6 shadow-lg">
-								<h2 className="mb-4 text-xl font-semibold text-gray-800">
-									Result
-								</h2>
-								<TransitionPreview
-									transition={previewTransition}
-									videoSources={previewSources}
-								/>
-								<MergeResult
-									status={mergeStatus}
-									taskId={taskId}
-									videoUrl={resultVideoUrl}
-									onReset={resetMerge}
-								/>
-							</div>
-						</div>
-					</div>
-				) : (
-					<div className="mx-auto max-w-7xl">
-						<TranscriptTab />
-					</div>
-				)}
-			</div>
+                <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                 <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-pink-100 text-pink-600 rounded-lg"><FaMusic className="w-5 h-5" /></div>
+                    <h2 className="text-lg font-bold text-slate-800">3. Add Audio (Optional)</h2>
+                  </div>
+                  <AudioUploader
+                    selectedAudio={selectedAudio}
+                    onAudioChange={setSelectedAudio}
+                  />
+                </section>
+
+              </div>
+
+              {/* Right Column: Preview & Action */}
+              <div className="lg:col-span-1 space-y-6">
+                <div className="sticky top-6">
+                  <TransitionPreview
+                    transition={previewTransition}
+                    videoSources={previewSources}
+                  />
+                  
+                  <div className="mt-6 bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                     <MergeResult
+                      status={mergeStatus}
+                      taskId={taskId}
+                      videoUrl={resultVideoUrl}
+                      onReset={resetMerge}
+                    />
+                    
+                    {mergeStatus === "IDLE" && (
+                      <button
+                        type="button"
+                        onClick={handleMerge}
+                        disabled={isProcessing || !selectedTransition || selectedVideos.length === 0}
+                        className="w-full mt-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold py-4 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none flex justify-center items-center gap-2"
+                      >
+                         {isProcessing ? "Processing..." : <>Create Video <FaBolt className="w-5 h-5 fill-white/20" /></>}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+             <div className="max-w-4xl mx-auto">
+                <TranscriptTab />
+             </div>
+          )}
+        </div>
+      </main>
 
 			{showUpgradeDialog && (
 				<UpgradeDialog onClose={() => setShowUpgradeDialog(false)} />

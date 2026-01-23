@@ -7,14 +7,14 @@ WORKDIR /app
 RUN corepack enable pnpm
 
 # Copy package manifest(s) first for better layer caching
-COPY package*.json pnpm-lock.yaml yarn.lock* ./
+COPY package*.json yarn.lock* ./
 
 # Install dependencies with best practices
 RUN if [ -f pnpm-lock.yaml ]; then \
     pnpm install --frozen-lockfile --prefer-offline; \
     elif [ -f yarn.lock ]; then \
     corepack prepare yarn@stable --activate; \
-    yarn install --immutable --immutable-cache --check-cache; \
+    yarn install --non-interactive; \
     elif [ -f package-lock.json ]; then \
     npm ci --prefer-offline; \
     else \
@@ -62,8 +62,8 @@ RUN echo '<!DOCTYPE html><html><body>OK</body></html>' > /usr/share/nginx/html/h
 HEALTHCHECK --interval=10s --timeout=3s --retries=3 --start-period=5s \
     CMD curl -f http://localhost/health.html || exit 1
 
-# Run as non-root user
-USER webapp
+# NOTE: Nginx master process must bind to port 80; run as root and rely on nginx worker process user dropping privileges via config
+USER root
 
 # Expose port
 EXPOSE 80

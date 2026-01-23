@@ -2,6 +2,7 @@ import TextRotate from "@/fancy/components/text/text-rotate";
 import { LayoutGroup, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { FaArrowRight, FaCheckCircle, FaLayerGroup, FaBolt, FaMusic, FaMagic } from "react-icons/fa";
 import GoogleLoginButton from "./GoogleLoginButton";
 import Preview from "./Preview";
 
@@ -15,9 +16,8 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
 	const [showGoogleContinue, setShowGoogleContinue] = useState(false);
 
 	useEffect(() => {
-		// Check if user has Google account logged in
-		// This would be determined by Google's API
-		setShowGoogleContinue(true); // Simulating Google account detection
+		// Ensure page is scrolled to top on mount
+		window.scrollTo(0, 0);
 	}, []);
 
 	let maxWidth = Infinity;
@@ -25,127 +25,206 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
 		maxWidth = window.screen.width;
 	}
 
-	const imgWidth = Math.min(512, maxWidth);
-	const imgHeight = Math.round((imgWidth * 384) / 512);
+	const imgWidth = Math.min(600, maxWidth);
+	const imgHeight = Math.round((imgWidth * 9) / 16);
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-50 to-indigo-100 relative">
-			{/* Animated background blobs */}
-			<div className="absolute inset-0">
-				<div className="absolute top-20 left-20 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-				<div className="absolute top-40 right-20 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-				<div className="absolute bottom-20 left-1/2 w-72 h-72 bg-indigo-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+		<div className="min-h-screen bg-slate-900 text-slate-50 font-sans selection:bg-purple-500/30">
+			{/* Animated Background */}
+			<div className="fixed inset-0 overflow-hidden pointer-events-none">
+				<div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-500/20 rounded-full blur-[120px] mix-blend-screen animate-blob" />
+				<div className="absolute top-[20%] right-[-10%] w-[35%] h-[40%] bg-blue-500/20 rounded-full blur-[120px] mix-blend-screen animate-blob animation-delay-2000" />
+				<div className="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] bg-indigo-500/20 rounded-full blur-[120px] mix-blend-screen animate-blob animation-delay-4000" />
 			</div>
 
-			{/* Header */}
-			<header className="relative z-10 flex justify-between items-center p-6">
-				<div className="text-2xl font-bold text-gray-800">VideoMerger</div>
-				<div className="flex gap-4">
-					{showGoogleContinue && (
-						<GoogleLoginButton
-							useOneTap
-							text="Continue with Google"
-							onSuccess={onLogin}
-							className="mr-2"
-						/>
-					)}
-					<button
-						type="button"
-						onClick={() => navigate("/login")}
-						className="px-6 py-2 text-gray-700 hover:text-gray-900 transition-colors"
-					>
-						Login
-					</button>
-					<button
-						type="button"
-						onClick={() => navigate("/signup")}
-						className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg"
-					>
-						Register
-					</button>
+			{/* Navigation */}
+			<header className="fixed top-0 inset-x-0 z-50 glass-dark">
+				<div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						<div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
+							V
+						</div>
+						<span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+							VideoMerger
+						</span>
+					</div>
+					<div className="flex gap-4 items-center relative z-[60]">
+						<button
+							type="button"
+							onClick={() => navigate("/login")}
+							className="text-sm font-medium text-slate-300 hover:text-white transition-colors px-3 py-2 rounded-md hover:bg-white/5"
+						>
+							Log in
+						</button>
+						<button
+							type="button"
+							onClick={() => navigate("/signup")}
+							className="px-5 py-2.5 text-sm font-semibold bg-white text-slate-900 rounded-xl hover:bg-slate-100 transition-all shadow-lg shadow-white/10 active:scale-95"
+						>
+							Get Started
+						</button>
+					</div>
 				</div>
 			</header>
 
 			{/* Hero Section */}
-			<div className="relative whitespace-pre z-10 flex flex-col items-center justify-center text-center py-20 px-4">
-				<LayoutGroup>
-					<motion.h1
-						layout
-						transition={{ type: "spring", damping: 30, stiffness: 400 }}
-						className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl flex flex-wrap justify-center font-bold text-gray-800 mb-6"
-					>
-						Merge videos{" "}
-						<TextRotate
-							texts={words}
-							mainClassName="text-white px-2 sm:px-2 md:px-3 bg-[#ff5941] overflow-hidden justify-center rounded-lg"
-							staggerFrom={"last"}
-							initial={{ y: "100%" }}
-							animate={{ y: 0 }}
-							exit={{ y: "-120%" }}
-							staggerDuration={0.025}
-							splitLevelClassName="overflow-hidden pb-0.5 sm:pb-1 md:pb-1"
-							transition={{ type: "spring", damping: 30, stiffness: 400 }}
-						/>
-					</motion.h1>
-				</LayoutGroup>
-			</div>
-
-			{/* Main Content */}
-			<div className="relative z-10 flex items-center justify-center px-4 sm:px-6 md:px-8 w-full">
-				<div className="w-full max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 items-center">
-					{/* Description */}
-					<div className="text-center lg:text-left">
-						<h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-4 sm:mb-6">
-							Professional Video Merging Made Simple
-						</h2>
-						<p className="text-base sm:text-lg text-gray-600 mb-6 sm:mb-8 leading-relaxed">
-							Combine multiple videos seamlessly with our advanced transition
-							effects. Add background audio, choose from 50+ professional
-							transitions, and create stunning merged videos in minutes. Perfect
-							for content creators, marketers, and video enthusiasts.
+			<main className="relative z-10 pt-32 pb-20 px-6">
+				<div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+					<div className="space-y-8">
+						<LayoutGroup>
+							<motion.h1 
+								className="text-5xl lg:text-7xl font-bold leading-tight"
+								initial={{ opacity: 0, y: 20 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ duration: 0.5 }}
+							>
+								Merge videos <br />
+								<TextRotate
+									texts={words}
+									mainClassName="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400"
+									staggerFrom="last"
+									initial={{ y: "100%" }}
+									animate={{ y: 0 }}
+									exit={{ y: "-120%" }}
+									staggerDuration={0.025}
+									transition={{ type: "spring", damping: 30, stiffness: 400 }}
+								/>
+							</motion.h1>
+						</LayoutGroup>
+						
+						<p className="text-xl text-slate-400 max-w-lg leading-relaxed">
+							Create professional video sequences with 50+ seamless transitions, custom audio mixing, and instant previews. No software to install.
 						</p>
-						<div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+
+						<div className="flex flex-col sm:flex-row gap-4 relative z-20">
+							<GoogleLoginButton
+								useOneTap
+								text="Continue with Google"
+								onSuccess={onLogin}
+								className="bg-white text-slate-900 rounded-xl hover:bg-slate-50 transition-all"
+							/>
+							<button 
+								onClick={() => navigate("/signup")}
+								className="px-8 py-3 bg-slate-800 text-white rounded-xl font-semibold border border-white/10 hover:bg-slate-700 transition-all flex items-center justify-center gap-2 group"
+							>
+								Start Free Trial
+								<FaArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+							</button>
+						</div>
+						
+						<div className="flex gap-6 text-sm text-slate-400">
 							<div className="flex items-center gap-2">
-								<div className="w-2 h-2 bg-green-500 rounded-full"></div>
-								<span className="text-gray-600">50+ Transitions</span>
+								<FaCheckCircle className="w-5 h-5 text-green-400" />
+								<span>No credit card required</span>
 							</div>
 							<div className="flex items-center gap-2">
-								<div className="w-2 h-2 bg-green-500 rounded-full"></div>
-								<span className="text-gray-600">Audio Background</span>
-							</div>
-							<div className="flex items-center gap-2">
-								<div className="w-2 h-2 bg-green-500 rounded-full"></div>
-								<span className="text-gray-600">Fast Processing</span>
+								<FaCheckCircle className="w-5 h-5 text-green-400" />
+								<span>Free tier available</span>
 							</div>
 						</div>
 					</div>
-					<div className="flex justify-center items-center w-full">
-						<div className="w-full max-w-[512px]">
-							<Preview width={imgWidth} height={imgHeight} />
+
+					<div className="relative">
+						<div className="absolute inset-0 bg-gradient-to-r from-purple-500/30 to-blue-500/30 blur-3xl -z-10 rounded-full" />
+						<div className="bg-slate-900/50 p-4 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-sm">
+							<div className="rounded-lg overflow-hidden border border-white/5">
+								<Preview width={imgWidth} height={imgHeight} />
+							</div>
 						</div>
 					</div>
 				</div>
-			</div>
 
-			<style jsx>{
-				/* css */ `
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
-        }
-        .animate-blob {
-          animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `
-			}</style>
+				{/* Features Grid */}
+				<div className="max-w-7xl mx-auto mt-32">
+					<div className="text-center mb-16 space-y-4">
+						<h2 className="text-3xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+							Everything you need
+						</h2>
+						<p className="text-slate-400 text-lg">Power-packed features for modern creators</p>
+					</div>
+
+					<div className="grid md:grid-cols-3 gap-8">
+						{[
+							{
+								icon: <FaLayerGroup className="w-8 h-8 text-purple-400" />,
+								title: "50+ Transitions",
+								desc: "Professional-grade GL transitions to make your cuts smooth and cinematic."
+							},
+							{
+								icon: <FaMusic className="w-8 h-8 text-blue-400" />,
+								title: "Audio Mixing",
+								desc: "Upload custom soundtracks or let us handle the audio merging for you."
+							},
+							{
+								icon: <FaBolt className="w-8 h-8 text-yellow-400" />,
+								title: "Instant Preview",
+								desc: "See your changes in real-time with our high-performance WebGL renderer."
+							}
+						].map((feature, i) => (
+							<motion.div 
+								key={i}
+								whileHover={{ y: -5 }}
+								className="p-8 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+							>
+								<div className="mb-6 p-4 rounded-xl bg-slate-800/50 w-fit">
+									{feature.icon}
+								</div>
+								<h3 className="text-xl font-bold mb-3 text-slate-100">{feature.title}</h3>
+								<p className="text-slate-400 leading-relaxed">{feature.desc}</p>
+							</motion.div>
+						))}
+					</div>
+				</div>
+			</main>
+
+			{/* Footer */}
+			<footer className="border-t border-white/10 py-12 mt-20 relative z-10 text-slate-400 bg-slate-950">
+				<div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-12">
+					<div className="col-span-2">
+						<div className="flex items-center gap-2 mb-4">
+							<div className="w-6 h-6 rounded bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold text-xs">
+								V
+							</div>
+							<span className="text-lg font-bold text-white">VideoMerger</span>
+						</div>
+						<p className="text-sm max-w-sm">
+							The most advanced in-browser video merging platform. Built for performance and ease of use.
+						</p>
+					</div>
+					<div>
+						<h4 className="font-bold text-white mb-4">Product</h4>
+						<ul className="space-y-2 text-sm">
+							<li><button onClick={() => window.scrollTo({top: 800, behavior: 'smooth'})} className="hover:text-purple-400 transition-colors">Features</button></li>
+							<li><button onClick={() => navigate("/signup")} className="hover:text-purple-400 transition-colors">Pricing</button></li>
+							<li><button className="hover:text-purple-400 transition-colors cursor-not-allowed opacity-50">Showcase (Soon)</button></li>
+						</ul>
+					</div>
+					<div>
+						<h4 className="font-bold text-white mb-4">Legal</h4>
+						<ul className="space-y-2 text-sm">
+							<li><button className="hover:text-purple-400 transition-colors cursor-not-allowed opacity-50">Privacy Policy</button></li>
+							<li><button className="hover:text-purple-400 transition-colors cursor-not-allowed opacity-50">Terms of Service</button></li>
+						</ul>
+					</div>
+				</div>
+			</footer>
+
+			<style jsx>{`
+				@keyframes blob {
+					0%, 100% { transform: translate(0, 0) scale(1); }
+					33% { transform: translate(30px, -50px) scale(1.1); }
+					66% { transform: translate(-20px, 20px) scale(0.9); }
+				}
+				.animate-blob {
+					animation: blob 10s infinite alternate;
+				}
+				.animation-delay-2000 {
+					animation-delay: 2s;
+				}
+				.animation-delay-4000 {
+					animation-delay: 4s;
+				}
+			`}</style>
 		</div>
 	);
 }

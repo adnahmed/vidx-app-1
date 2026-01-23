@@ -13,14 +13,7 @@ import LandingPage from "./components/LandingPage";
 import "./Main.css";
 
 function Main() {
-	const [session, setSession] = useState<StoredSession | null>(null);
-
-	useEffect(() => {
-		const storedSession = readSession();
-		if (storedSession) {
-			setSession(storedSession);
-		}
-	}, []);
+	const [session, setSession] = useState<StoredSession | null>(() => readSession());
 
 	const handleLogin = (
 		email: string,
