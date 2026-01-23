@@ -1,41 +1,72 @@
-# ---------- build ----------
+# ─── Build Stage ────────────────────────────────────────────────────────────
 FROM node:20-alpine AS build
+
 WORKDIR /app
 
-# install deps first for better caching
-# copy package manifest(s) first so layer can be cached separately from source
-COPY package*.json yarn.* ./
-# Use npm ci when a lockfile exists for reproducible builds; fall back to npm install otherwise.
-# This prevents build failures in environments where package-lock.json is not present.
-RUN if [ -f yarn.lock ]; then \
-    # Ensure Corepack / Yarn are available in the lightweight node image
-    corepack enable; \
+# Install pnpm for better performance
+RUN corepack enable pnpm
+
+# Copy package manifest(s) first for better layer caching
+COPY package*.json pnpm-lock.yaml yarn.lock* ./
+
+# Install dependencies with best practices
+RUN if [ -f pnpm-lock.yaml ]; then \
+    pnpm install --frozen-lockfile --prefer-offline; \
+    elif [ -f yarn.lock ]; then \
     corepack prepare yarn@stable --activate; \
-    # Use Yarn's immutable install for reproducibility. Newer Yarn recommends --immutable --immutable-cache --check-cache
-    yarn install --immutable --immutable-cache --check-cache || yarn install --frozen-lockfile || yarn install; \
+    yarn install --immutable --immutable-cache --check-cache; \
     elif [ -f package-lock.json ]; then \
-    # Use npm ci when a lockfile exists for reproducible builds
-    npm ci; \
+    npm ci --prefer-offline; \
     else \
-    # Fallback to npm install when no lockfile is present
     npm install; \
     fi
 
-# copy source
+# Copy source code
 COPY . .
 
-# React reads REACT_APP_* at build-time
-ARG REACT_APP_API_URL
-ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+# Build-time environment variables
+ARG REACT_APP_API_URL=https://api.example.com
+ARG NODE_ENV=production
 
-# build static site
+ENV REACT_APP_API_URL=${REACT_APP_API_URL}
+ENV NODE_ENV=${NODE_ENV}
+
+# Build the application
 RUN npm run build
 
-# ---------- run (nginx) ----------
-FROM nginx:1.27-alpine
-# Serve the built React app
-COPY --from=build /app/build /usr/share/nginx/html
-# Use our SPA-friendly nginx config
+# Verify build
+RUN test -d build && echo "Build successful" || (echo "Build failed" && exit 1)
+
+# ─── Runtime Stage ──────────────────────────────────────────────────────────
+FROM nginx:1.27-alpine AS prod
+
+# Install curl for health checks
+RUN apk add --no-cache curl
+
+# Create non-root user for nginx
+RUN addgroup -g 1000 webapp && \
+    adduser -D -u 1000 -G webapp webapp && \
+    mkdir -p /var/cache/nginx /var/run/nginx && \
+    chown -R webapp:webapp /var/cache/nginx /var/run/nginx /etc/nginx/conf.d
+
+# Copy built application from build stage
+COPY --from=build --chown=webapp:webapp /app/build /usr/share/nginx/html
+
+# Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-# Nginx will also reverse-proxy /api to the backend
-# We'll drop in a site config from the infra repo at runtime via a bind mount
+
+# Create health check endpoint
+RUN echo '<!DOCTYPE html><html><body>OK</body></html>' > /usr/share/nginx/html/health.html
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 --start-period=5s \
+    CMD curl -f http://localhost/health.html || exit 1
+
+# Run as non-root user
+USER webapp
+
+# Expose port
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
