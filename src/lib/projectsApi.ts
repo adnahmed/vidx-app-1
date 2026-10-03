@@ -112,9 +112,12 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
 	const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
 	if (response.status === 401) {
 		// Expired or invalid session: clear it and return to login.
+		// Hash-based routing keeps deep links working on static hosts without
+		// an SPA rewrite rule.
 		clearSession();
-		if (window.location.pathname !== "/login") {
-			window.location.href = "/login";
+		if (!window.location.hash.startsWith("#/login")) {
+			window.location.replace(`${window.location.origin}/#/login`);
+			window.location.reload();
 		}
 	}
 	return response;
