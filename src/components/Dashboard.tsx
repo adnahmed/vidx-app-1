@@ -10,6 +10,7 @@ import AnimatedVignette from "./AnimatedVignette";
 import AudioUploader from "./AudioUploader";
 import HistoryDialog from "./HistoryDialog";
 import MergeResult from "./MergeResult";
+import SocialMediaTab from "./social/SocialMediaTab";
 import { TrackVisibility } from "./TrackVisibility";
 import TranscriptTab from "./TranscriptTab";
 import UpgradeDialog from "./UpgradeDialog";
@@ -17,6 +18,7 @@ import VideoUploader from "./VideoUploader";
 import Vignette from "./Vignette";
 import {
 	FaBolt,
+	FaBullhorn,
 	FaChevronLeft,
 	FaChevronRight,
 	FaFileAlt,
@@ -232,7 +234,7 @@ function TransitionPreview({
 	);
 }
 
-type TabType = "merge" | "transcript";
+type TabType = "merge" | "transcript" | "social";
 
 export default function Dashboard({
 	userEmail,
@@ -371,7 +373,7 @@ export default function Dashboard({
 
 				const data = await response.json();
 
-				const nextStatus = normaliseVideoStatus(data.status);
+				const nextStatus = normaliseVideoStatus(typeof data === "object" && data !== null ? data.status : data);
 
 				if (nextStatus === "SUCCESS") {
 					setMergeStatus("SUCCESS");
@@ -436,6 +438,13 @@ export default function Dashboard({
           >
             <FaFileAlt className="w-5 h-5" />
             Transcripts
+          </button>
+          <button 
+            onClick={() => setActiveTab("social")}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeTab === "social" ? "bg-purple-50 text-purple-700" : "text-slate-600 hover:bg-slate-50"}`}
+          >
+            <FaBullhorn className="w-5 h-5" />
+            Social Media
           </button>
         </nav>
 
@@ -547,10 +556,12 @@ export default function Dashboard({
                 </div>
               </div>
             </div>
-          ) : (
+          ) : activeTab === "transcript" ? (
              <div className="max-w-4xl mx-auto">
                 <TranscriptTab />
              </div>
+          ) : (
+             <SocialMediaTab />
           )}
         </div>
       </main>
